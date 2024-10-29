@@ -16,7 +16,12 @@ export type SocketMessage={
   data:any
 }
 // Define Hono routes
-app.use('/*', serveStatic({ root: './src/public/' }));
+app.use('/*', serveStatic({ root: './src/public/',  onFound: (path, c) => {
+  console.log(`Serving static file: ${path}`);
+},
+onNotFound: (path, c) => {
+  console.warn(`File not found: ${path}`);
+}, }));
 app.route("/user", newUserRouter);
 app.route("/login", loginRouter);
 app.route("/branch/", branchRouter);

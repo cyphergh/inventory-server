@@ -6,6 +6,7 @@ import { inventoryRoute } from "./inventory/inventory";
 import { getBranches } from "./ws/getBranch";
 import { getUsers } from "./ws/getUsers";
 import { shopRouter } from "./shop/order";
+import { serveStatic } from "hono/bun";
 
 // Initialize Hono app
 const app = new Hono();
@@ -15,15 +16,13 @@ export type SocketMessage={
   data:any
 }
 // Define Hono routes
-app.get("/", (c) => {
-  return c.json({ message: "Hello, World! done all" });
-});
-
+app.use('/*', serveStatic({ root: './src/public/' }));
 app.route("/user", newUserRouter);
 app.route("/login", loginRouter);
 app.route("/branch/", branchRouter);
 app.route("/inventory/", inventoryRoute);
 app.route("/shop/", shopRouter);
+
 
 // Export the Hono app as a handler
 export const handler = app.fetch;

@@ -1,0 +1,310 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ROLE {
+  SUPERVISOR
+  SALESPERSON
+}
+
+model Branch {
+  id           String            @id @default(cuid())
+  name         String
+  location     String
+  email        String
+  phone        String
+  sales        Float             @default(0)
+  user         User[]
+  customers    Customer[]
+  payments     Payments[]
+  transactions Transaction[]
+  deposits     Deposits[]
+  imports      InventoryExport[]
+  stocks       Stocks[]
+  stockTopUps  StocksTopUp[]
+
+  @@unique([name, location])
+}
+enum NoteSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+model AdminNote {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  message   String
+  read      String[]
+  severity  NoteSeverity
+}
+
+model User {
+  id                  String            @id @default(cuid())
+  firstName           String
+  lastName            String
+  email               String            @unique
+  phoneNumber         String            @unique
+  active              Boolean           @default(true)
+  role                ROLE
+  dateOfBirth         DateTime
+  salary              Float             @default(0)
+  sales               Float             @default(0)
+  profile             Bytes?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  auth                Auth?             @relation(fields: [authId], references: [id])
+  authId              String?           @unique
+  orders              Order[]
+  branchId            String?
+  branch              Branch?           @relation(fields: [branchId], references: [id])
+  deposits            Deposits[]        @relation(name: "depositor")
+  depositConfirmation Deposits[]        @relation(name: "approver")
+  transactions        Transaction[]
+  exports             InventoryExport[]
+  imports             InventoryTopup[]
+  stockTopUps         StocksTopUp[]
+  lastSeen            DateTime          @default(now())
+}
+
+model Customer {
+  id           String        @id @default(cuid())
+  name         String
+  email        String?       @unique
+  phoneNumber  String        @unique
+  location     String
+  balance      Float         @default(0)
+  auth         Auth?         @relation(fields: [authId], references: [id])
+  authId       String?       @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  dateOfBirth  DateTime
+  payments     Payments[]
+  orders       Order[]
+  transactions Transaction[]
+  branchId     String
+  branch       Branch        @relation(fields: [branchId], references: [id])
+}
+
+enum PaymentMethod {
+  CASH
+  BANK
+  MOMO
+}
+
+enum PaymentStatus {
+  COMPLETED
+  UNCOMPLETE
+  CANCELED
+}
+
+enum OrderStatus {
+  PENDING
+  REVIEW
+  APPROVED
+  DELIVERED
+}
+
+model Order {
+  id         String       @id @default(cuid())
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  payment    Payments?
+  status     OrderStatus
+  handlerId  String
+  handler    User         @relation(fields: [handlerId], references: [id])
+  customerId String
+  customer   Customer     @relation(fields: [customerId], references: [id])
+  items      OrderItems[]
+}
+
+model OrderItems {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  quantity    Int
+  price       Float
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id])
+}
+
+model Payments {
+  id            String        @id @default(cuid())
+  amount        Float
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus
+  totalAmount   Float
+  amountPayed   Float
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  order         Order?        @relation(fields: [orderId], references: [id])
+  orderId       String?       @unique
+  transactions  Transaction[]
+  branchId      String?
+  branch        Branch?       @relation(fields: [branchId], references: [id])
+}
+
+enum TransactionType {
+  PAYMENT
+  DEPOSIT
+  REDRAWAL
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  REVIEW
+  APPROVED
+}
+
+model Transaction {
+  id         String            @id @default(cuid())
+  amount     Float
+  type       TransactionType
+  status     TransactionStatus
+  paymentId  String?
+  userID     String
+  customerId String?
+  customer   Customer?         @relation(fields: [customerId], references: [id])
+  user       User              @relation(fields: [userID], references: [id])
+  payment    Payments?         @relation(fields: [paymentId], references: [id])
+  deposit    Deposits?
+  branchId   String?
+  branch     Branch?           @relation(fields: [branchId], references: [id])
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+}
+
+enum DepositStatus {
+  APPROVED
+  PENDING
+}
+
+model Deposits {
+  id                String        @id @default(cuid())
+  amount            Float
+  status            DepositStatus
+  bankName          String
+  bankAccount       String
+  bankTransactionId String
+  datePayed         DateTime
+  transactionId     String        @unique
+  transaction       Transaction?  @relation(fields: [transactionId], references: [id])
+  userId            String
+  user              User          @relation(name: "depositor", fields: [userId], references: [id])
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  approvedBy        String?
+  approver          User?         @relation(name: "approver", fields: [approvedBy], references: [id])
+  branchId          String?
+  branch            Branch?       @relation(fields: [branchId], references: [id])
+}
+
+model Auth {
+  id                  String    @id @default(cuid())
+  password            String
+  email               String    @unique
+  phoneNumber         String    @unique
+  secondLayerSecurity Boolean   @default(false)
+  attempts            Int       @default(0)
+  user                User?
+  customer            Customer?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  token               String    @default("")
+}
+
+model Inventory {
+  id              String            @id @default(cuid())
+  name            String
+  quantity        Int
+  unit            String
+  weight          String
+  sellingPrice    Float
+  image           Bytes
+  brand           String
+  dimension       String
+  costPrice       Float
+  colour          String
+  manufacturer    String
+  rating          Float             @default(0)
+  expireDate      DateTime
+  expirationAlert Int
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  topups          InventoryTopup[]
+  exports         InventoryExport[]
+  stocks          Stocks[]
+  stockTopUps     StocksTopUp[]
+  orderItems      OrderItems[]
+
+  @@unique([name, brand, colour, weight, dimension, unit])
+}
+
+model InventoryExport {
+  id          String    @id @default(cuid())
+  quantity    Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  branchId    String
+  branch      Branch    @relation(fields: [branchId], references: [id])
+}
+
+model InventoryTopup {
+  id          String    @id @default(cuid())
+  quantity    Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  inventoryId String
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+}
+
+model Stocks {
+  id          String        @id @default(cuid())
+  inventoryId String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  inventory   Inventory     @relation(fields: [inventoryId], references: [id])
+  remaining   Int
+  branchId    String
+  branch      Branch        @relation(fields: [branchId], references: [id])
+  stockTopUp  StocksTopUp[]
+
+  @@unique([branchId, inventoryId])
+}
+
+model StocksTopUp {
+  id          String    @id @default(cuid())
+  inventoryId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  total       Int
+  branchId    String
+  branch      Branch    @relation(fields: [branchId], references: [id])
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  stockId     String
+  stock       Stocks    @relation(fields: [stockId], references: [id])
+}

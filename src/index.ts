@@ -16,7 +16,7 @@ export type SocketMessage={
   data:any
 }
 // Define Hono routes
-app.use('/*', serveStatic({ root: './public',  onFound: (path, c) => {
+app.use('/*', serveStatic({ root: '/home/administrator/iddrisco/inventory-server/src/public',  onFound: (path, c) => {
   console.log(`Serving static file: ${path}`);
 },
 onNotFound: (path, c) => {

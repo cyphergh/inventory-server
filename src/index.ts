@@ -36,6 +36,16 @@ export const handler = app.fetch;
 // Bun server with WebSocket and Hono route integration
 Bun.serve({
   fetch(req, server) {
+    const headers = {
+      "Access-Control-Allow-Origin": "*", // Allow all origins
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    };
+
+    // Handle preflight requests
+    if (req.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers });
+    }
     if (server.upgrade(req)) {
       return; // Do not return an HTTP response if the WebSocket upgrade is successful
     }

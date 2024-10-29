@@ -22,6 +22,7 @@ app.use('/*', serveStatic({ root: './src/public/',  onFound: (path, c) => {
 onNotFound: (path, c) => {
   console.warn(`File not found: ${path}`);
 }, }));
+app.get("/alive", (c) => c.text("OK online"));
 app.route("/user", newUserRouter);
 app.route("/login", loginRouter);
 app.route("/branch/", branchRouter);

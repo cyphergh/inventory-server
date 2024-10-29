@@ -35,7 +35,7 @@ Bun.serve({
     }
     return handler(req);
   },
-  port: 80,
+  port: 8191,
   websocket: {
     message(ws, message) {
       let data:SocketMessage = JSON.parse(message as string);
